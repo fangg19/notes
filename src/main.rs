@@ -22,9 +22,9 @@ fn main() {
     let matches: ArgMatches = command!()
         .arg(
             Arg::new("mode")
-                .short('m')
-                .long("mode")
-                .help("Mode of the program. Possible values: create, open")
+                // .short('m')
+                // .long("mode")
+                .help("Mode of the program. Create or open a note.")
                 .required(true)
                 .value_parser(["create", "open"]),
         )
