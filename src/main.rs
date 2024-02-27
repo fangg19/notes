@@ -2,7 +2,10 @@ use clap::{command, Arg, ArgMatches, Command};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-
+enum Mode {
+    Create,
+    Open,
+}
 fn main() {
     // let args: Vec<String> = env::args().collect();
     // println!("Args: {:?}", args);
@@ -16,7 +19,7 @@ fn main() {
     //     let _ = create_file(config);
     // }
 
-    let match_result: ArgMatches = command!()
+    let matches: ArgMatches = command!()
         .arg(
             Arg::new("mode")
                 .short('m')
@@ -33,14 +36,24 @@ fn main() {
         )
         .get_matches();
 
-    let mode = match_result.get_one::<String>("mode");
+    let mode = matches.get_one::<String>("mode");
     println!("Mode: {:?}", mode);
 
-    if mode == Some("create").toString() {
-        println!("Create mode");
+    if mode == Some(&"open".to_string()) {
+        println!("Open mode");
+        let title = matches.get_one::<String>("title").unwrap();
+        println!("Title: {:?}", title);
     }
 
-    // println!("Match result: {:?}", match_result);
+    if mode == Some(&"create".to_string()) {
+        println!("Create mode");
+        let title = matches.get_one::<String>("title").unwrap();
+        let body = matches.get_one::<String>("body").unwrap();
+        println!("Title: {:?}", title);
+        println!("Body: {:?}", body);
+    }
+
+    // println!("Match result: {:?}", matches);
 }
 fn create_file(config: CreateConfig) -> std::io::Result<()> {
     // let default_path: &str = "../../../notes";
