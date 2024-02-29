@@ -1,29 +1,19 @@
-use clap::{command, Arg, ArgMatches, Command};
-use std::env;
+use clap::{command, Arg, ArgMatches};
 use std::fs::File;
 use std::io::prelude::*;
+use std::{env, io};
+
 enum Mode {
     Create,
     Open,
 }
+
 fn main() {
-    // let args: Vec<String> = env::args().collect();
-    // println!("Args: {:?}", args);
-    // if args.len() == 3 {
-    //     let open_config = OpenConfig::new(&args);
-    //     println!("Should open file: {}", open_config.title);
-    //     let _ = open_file(&open_config.title);
-    // } else if args.len() == 4 {
-    //     let config = CreateConfig::new(&args);
-    //     println!("Should create file: {}", config.title);
-    //     let _ = create_file(config);
-    // }
+    let path_from_file = read_env_file();
 
     let matches: ArgMatches = command!()
         .arg(
             Arg::new("mode")
-                // .short('m')
-                // .long("mode")
                 .help("Mode of the program. Create or open a note.")
                 .required(true)
                 .value_parser(["create", "open"]),
@@ -38,11 +28,13 @@ fn main() {
 
     let mode = matches.get_one::<String>("mode");
     println!("Mode: {:?}", mode);
+    println!("The path is: {:?}", path_from_file);
 
     if mode == Some(&"open".to_string()) {
         println!("Open mode");
         let title = matches.get_one::<String>("title").unwrap();
         println!("Title: {:?}", title);
+        open_note(&path_from_file, &title);
     }
 
     if mode == Some(&"create".to_string()) {
@@ -51,60 +43,70 @@ fn main() {
         let body = matches.get_one::<String>("body").unwrap();
         println!("Title: {:?}", title);
         println!("Body: {:?}", body);
+        create_note(&path_from_file, title, body);
     }
 
     // println!("Match result: {:?}", matches);
 }
-fn create_file(config: CreateConfig) -> std::io::Result<()> {
-    // let default_path: &str = "../../../notes";
-    // let path = format!("{}/{}.txt", default_path, config.title);
-    let path = format!("{}.txt", config.title);
-    let mut file = File::create(path)?;
-    let content = config.body.replace("_", " ");
-    file.write_all(content.as_bytes())?;
-    Ok(())
+fn read_input() -> String {
+    println!("Enter the path to the notes directory: ");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+    input
 }
 
-fn open_file(filename: &str) -> std::io::Result<()> {
-    let path = format!("{}.txt", filename);
-    let mut file = File::open(path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    println!("File content: {}", contents);
-    Ok(())
-}
+fn read_env_file() -> String {
+    let file = File::open(".env");
+    match file {
+        Ok(mut file) => {
+            let mut contents = String::new();
 
-impl CreateConfig {
-    fn new(args: &[String]) -> CreateConfig {
-        if args.len() < 4 {
-            panic!("Not enough args for create config");
+            let path_env = file.read_to_string(&mut contents);
+            match path_env {
+                Ok(_) => {
+                    let path_value = contents.split('=').last().unwrap();
+                    path_value.to_string()
+                }
+                Err(_) => {
+                    write_path_to_env(&read_input()).unwrap();
+                    read_env_file()
+                }
+            }
         }
-        let flag = args[1].clone();
-        let title = args[2].clone();
-        let body = args[3].clone();
-
-        CreateConfig { flag, title, body }
+        Err(_) => {
+            write_path_to_env(&read_input()).unwrap_or(println!("Error wirting path to env"));
+            read_env_file()
+        }
     }
 }
 
-impl OpenConfig {
-    fn new(args: &[String]) -> OpenConfig {
-        if args.len() < 3 {
-            panic!("Not enough args for open config");
-        }
-        let flag = args[1].clone();
-        let title = args[2].clone();
+fn write_path_to_env(path: &String) -> io::Result<()> {
+    let string_to_write = format!("NOTES_PATH={}", path);
+    let mut file = File::create(".env")?;
+    file.write_all(string_to_write.as_bytes())?;
+    Ok(())
+}
 
-        OpenConfig { flag, title }
+fn create_note(path: &String, title: &String, body: &String) {
+    let file = File::create(format!("{}/{}.txt", path, title));
+    match file {
+        Ok(mut file) => {
+            file.write_all(body.as_bytes()).ok();
+        }
+        Err(error) => {
+            println!("Error creating file{:?}", error)
+        }
     }
 }
 
-struct CreateConfig {
-    flag: String,
-    title: String,
-    body: String,
-}
-struct OpenConfig {
-    flag: String,
-    title: String,
+fn open_note(path: &String, title: &String) {
+    let file = File::open(format!("{}/{}.txt", path, title));
+    match file {
+        Ok(mut file) => {
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).ok();
+            println!("{}", contents);
+        }
+        Err(_) => println!("Error opening file"),
+    }
 }
